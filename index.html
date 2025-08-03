@@ -490,8 +490,10 @@
             <span>${dateLabel}${authorLabel}</span>
             <div class="flex gap-2">
               <button class="apple-btn copyBtn px-3 py-1 text-sky-300 hover:text-sky-200" data-prompt="${encodeURIComponent(prompt)}">Копировать</button>
+              ${currentUserRole === 'editor' ? `
               <button class="apple-btn editBtn px-3 py-1 text-amber-300 hover:text-amber-200" title="Редактировать">✏️</button>
               <button class="apple-btn deleteBtn px-3 py-1 text-rose-300 hover:text-rose-200" title="Удалить">🗑️</button>
+              ` : ''}
             </div>
           </div>
           <pre class="promptText collapsed whitespace-pre-wrap break-words text-gray-100 text-base leading-relaxed font-mono transition-all duration-300 bg-transparent rounded-lg px-3 py-2 cursor-pointer select-text">${prompt}</pre>
@@ -928,10 +930,28 @@
     } else {
       hideLogin();
       document.getElementById('promptList').style.display = '';
-      document.getElementById('newPromptForm').style.display = '';
       document.querySelector('section').style.display = '';
       document.getElementById('logoutBtn').style.display = '';
       document.getElementById('profileBtn').style.display = '';
+      
+      // Проверяем роль пользователя для отображения формы добавления
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          currentUserRole = payload.isEditor ? 'editor' : 'user';
+          currentAuthorId = payload.authorId || null;
+          if (payload.isEditor) {
+            document.getElementById('newPromptForm').style.display = '';
+          } else {
+            document.getElementById('newPromptForm').style.display = 'none';
+          }
+        } catch (e) {
+          document.getElementById('newPromptForm').style.display = 'none';
+        }
+      } else {
+        document.getElementById('newPromptForm').style.display = 'none';
+      }
     }
 
     loginForm.onsubmit = async (e) => {
@@ -949,10 +969,24 @@
           localStorage.setItem('authToken', data.token);
           hideLogin();
           document.getElementById('promptList').style.display = '';
-          document.getElementById('newPromptForm').style.display = '';
           document.querySelector('section').style.display = '';
           document.getElementById('logoutBtn').style.display = '';
           document.getElementById('profileBtn').style.display = '';
+          
+          // Проверяем роль пользователя для отображения формы добавления
+          try {
+            const payload = JSON.parse(atob(data.token.split('.')[1]));
+            currentUserRole = payload.isEditor ? 'editor' : 'user';
+            currentAuthorId = payload.authorId || null;
+            if (payload.isEditor) {
+              document.getElementById('newPromptForm').style.display = '';
+            } else {
+              document.getElementById('newPromptForm').style.display = 'none';
+            }
+          } catch (e) {
+            document.getElementById('newPromptForm').style.display = 'none';
+          }
+          
           loadPrompts();
         } else {
           loginError.textContent = data && data.error ? data.error : 'Ошибка входа';
