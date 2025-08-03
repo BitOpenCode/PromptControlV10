@@ -470,17 +470,24 @@
       });
     }
 
-    function cardTemplate({ id, prompt, created_at, updated_at }, idx) {
+    function cardTemplate({ id, prompt, created_at, updated_at, author_id, author_name }, idx) {
       let dateLabel = '';
       if (updated_at) {
         dateLabel = 'Создан: ' + prettyDate(created_at) + '<br>Изменён: ' + prettyDate(updated_at);
       } else if (created_at) {
         dateLabel = 'Создан: ' + prettyDate(created_at);
       }
+      
+      let authorLabel = '';
+      if (author_name) {
+        authorLabel = `<br>Автор: ${author_name}`;
+      } else if (author_id) {
+        authorLabel = `<br>ID автора: ${author_id}`;
+      }
       return `
         <div class="apple-card p-5 shadow-xl flex flex-col gap-3 fade-in group relative active:border-sky-500" data-idx="${idx}" data-id="${id}">
           <div class="flex justify-between items-center text-xs text-gray-400 select-none">
-            <span>${dateLabel}</span>
+            <span>${dateLabel}${authorLabel}</span>
             <div class="flex gap-2">
               <button class="apple-btn copyBtn px-3 py-1 text-sky-300 hover:text-sky-200" data-prompt="${encodeURIComponent(prompt)}">Копировать</button>
               <button class="apple-btn editBtn px-3 py-1 text-amber-300 hover:text-amber-200" title="Редактировать">✏️</button>
@@ -510,10 +517,13 @@
           prompt: rec.prompt || rec.PROMPT || rec.text || rec.body || '',
           created_at: rec.created_at || rec.date || rec.Date || rec.ts || '',
           updated_at: rec.updated_at || '',
+          author_id: rec.author_id || null,
+          author_name: rec.author_name || null,
         }));
         lastDate = allPrompts.length ? allPrompts.reduce((a, b) => ((a.updated_at || a.created_at) > (b.updated_at || b.created_at) ? a : b)).updated_at || allPrompts.reduce((a, b) => (a.created_at > b.created_at ? a : b)).created_at : '';
         renderPrompts();
         updateStats();
+        updateMyPromptsCount();
       } catch (err) {
         console.error(err);
         listEl.innerHTML = '<p class="text-center text-rose-500">Ошибка загрузки промптов.</p>';
@@ -536,7 +546,9 @@
         filtered = filtered.filter(p => p.updated_at && p.updated_at !== '' && p.updated_at !== null);
       }
       if (showingMyPrompts && currentUserRole === 'editor' && currentAuthorId) {
-        filtered = filtered.filter(p => p.author_id == currentAuthorId);
+        filtered = filtered.filter(p => {
+          return p.author_id && (p.author_id.toString() === currentAuthorId.toString());
+        });
       }
       filtered = filtered.slice().sort((a, b) => {
         let av = a[sortField] || '';
@@ -564,8 +576,12 @@
 
     function updateMyPromptsCount() {
       if (currentUserRole === 'editor' && currentAuthorId) {
-        const myPrompts = allPrompts.filter(p => p.author_id == currentAuthorId);
+        const myPrompts = allPrompts.filter(p => {
+          // Сравниваем как строки, так как могут быть разные типы
+          return p.author_id && (p.author_id.toString() === currentAuthorId.toString());
+        });
         document.getElementById('myPromptsCount').textContent = myPrompts.length;
+        console.log('My prompts count:', myPrompts.length, 'currentAuthorId:', currentAuthorId, 'allPrompts:', allPrompts);
       }
     }
 
